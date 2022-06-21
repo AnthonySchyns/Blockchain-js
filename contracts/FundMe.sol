@@ -4,25 +4,31 @@ pragma solidity ^0.8.0;
 
 import "./PriceConverter.sol";
 
+error NotOwner();
+
 contract FundMe {
     using PriceConverter for uint256;
 
-    uint256 public minimumUsd = 50 * 1e18;
+    // constant when we can to spend less gas
+
+    uint256 public constant MINIMUM_USD = 50 * 1e18;
 
     address[] public funders;
     mapping(address => uint256) public addressToAmountFunded;
 
-    address public owner;
+    // immutable when we don't declare value immediatly to spend less gas
 
-    //constrtor is called when we deploy the contract
+    address public immutable i_owner;
+
+    //constructor is called when we deploy the contract
 
     constructor() {
-        owner = msg.sender;
+        i_owner = msg.sender;
     }
 
  function fund() public payable {
      // Send eth to the contract
-     require(msg.value.getConversionRate() > minimumUsd, "Didn't send enough"); // 1e18 = 1eth in wei
+     require(msg.value.getConversionRate() > MINIMUM_USD, "Didn't send enough"); // 1e18 = 1eth in wei
      // gas spend after require is give back if require isn't met
      funders.push(msg.sender);
      addressToAmountFunded[msg.sender] += msg.value;
@@ -46,9 +52,19 @@ contract FundMe {
  }
 
  modifier onlyOwner {
-     require(msg.sender == owner, "Sender is not owner");
-     //then continuer code
+     // revert does the same as require but whe don't store a string and then pay less gas
+     if (msg.sender != i_owner) {revert NotOwner();}
+     //require(msg.sender == i_owner, "Sender is not owner");
+     //then continue code
      _;
+ }
+
+ receive() external payable {
+     fund();
+ }
+
+ fallback() external payable {
+     fund();
  }
 
 }
